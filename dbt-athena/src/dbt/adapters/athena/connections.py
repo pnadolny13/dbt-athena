@@ -1,5 +1,6 @@
 import json
 import re
+import threading
 import time
 from concurrent.futures.thread import ThreadPoolExecutor
 from contextlib import contextmanager
@@ -43,6 +44,10 @@ from dbt.adapters.contracts.connection import (
     Credentials,
 )
 from dbt.adapters.sql import SQLConnectionManager
+from typing import Hashable, Dict
+from multiprocessing.context import SpawnContext
+from dbt.adapters.contracts.connection import AdapterRequiredConfig
+
 
 
 @dataclass
@@ -223,6 +228,11 @@ class AthenaCursor(Cursor):
 
 class AthenaConnectionManager(SQLConnectionManager):
     TYPE = "athena"
+
+    def __init__(self, config: AdapterRequiredConfig, mp_context: SpawnContext) -> None:
+        self.profile = config
+        self.thread_connections: Dict[Hashable, Connection] = {}
+        self.lock = threading.RLock()
 
     def set_query_header(self, query_header_context: Dict[str, Any]) -> None:
         self.query_header = AthenaMacroQueryStringSetter(self.profile, query_header_context)
